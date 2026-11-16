@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AccentBridge | Voice-to-Robot Demo</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d33;--muted:#a8b3ca;--accent:#8b9cff;--line:#2a3654}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0%,#202b50 0,transparent 38%),var(--bg);color:#f5f7ff;font:16px/1.55 system-ui,sans-serif}
+main{max-width:940px;margin:0 auto;padding:42px 20px 70px}.tag{color:#b9c5ff;text-transform:uppercase;letter-spacing:.16em;font-size:.75rem;font-weight:700}
+h1{font-size:clamp(2.4rem,7vw,4.6rem);line-height:1.02;margin:12px 0}p{color:var(--muted)}
+.panel{background:rgba(21,29,51,.92);border:1px solid var(--line);border-radius:20px;padding:24px;margin:22px 0;box-shadow:0 18px 60px #0003}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}button,select{border:1px solid #52618c;border-radius:12px;padding:12px 17px;background:#202b4b;color:white;font:inherit}button{cursor:pointer;font-weight:650}button.primary{background:#7386ff;color:#08102b;border:0}button:disabled{opacity:.45;cursor:not-allowed}
+#heard{font-size:1.4rem;color:white;min-height:2.2em;margin:14px 0}.muted{font-size:.9rem;color:var(--muted)}.robot{font-size:4rem;text-align:center;padding:12px}.status{font-weight:700;color:#b8c5ff}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-top:16px}.action{padding:14px;border-radius:12px;background:#10182b;border:1px solid var(--line)}.action strong{display:block;color:#dce2ff}.warning{border-left:3px solid #e8bd66;padding:10px 14px;background:#292419;color:#f3ddb0;border-radius:8px;font-size:.9rem}
+footer{margin-top:34px;color:var(--muted);font-size:.85rem}
+</style></head>
+<body><main>
+<div class="tag">AccentBridge · Interactive prototype</div>
+<h1>Speak naturally.<br>Move safely.</h1>
+<p>A voice-command interface for a simulated robot. Try English or Bahasa Indonesia, review the recognised phrase, then explicitly confirm before the robot responds.</p>
+<section class="panel">
+<div class="row"><label for="language">Recognition language</label><select id="language"><option value="en-US">English (US)</option><option value="id-ID">Bahasa Indonesia</option></select><span class="status" id="status">Ready</span></div>
+<div class="row" style="margin-top:18px"><button class="primary" id="listen">🎙 Start listening</button><button id="stop" disabled>Stop</button><button id="clear">Clear</button></div>
+<div id="heard" aria-live="polite">Your recognised speech will appear here.</div>
+<div class="muted">Try: “move forward”, “turn left”, “stop”, “maju”, “belok kiri”, or “berhenti”. Browser speech recognition support varies; Chrome desktop is recommended.</div>
+</section>
+<section class="panel">
+<div class="robot" id="robot">🤖</div><h2 style="text-align:center;margin:0">Robot simulator</h2>
+<p id="interpretation" style="text-align:center">No command selected.</p>
+<div class="row" style="justify-content:center"><button class="primary" id="confirm" disabled>Confirm simulated action</button><button id="cancel" disabled>Cancel</button></div>
+<p class="warning" style="margin-top:20px">Safety gate: speech recognition never moves anything by itself. You must review and confirm each simulated command. This prototype does not connect to a physical robot.</p>
+</section>
+<section class="panel">
+<h2>Available commands</h2><div class="actions">
+<div class="action"><strong>Move forward</strong><span class="muted">“move forward” · “maju”</span></div>
+<div class="action"><strong>Move backward</strong><span class="muted">“move backward” · “mundur”</span></div>
+<div class="action"><strong>Turn left</strong><span class="muted">“turn left” · “belok kiri”</span></div>
+<div class="action"><strong>Turn right</strong><span class="muted">“turn right” · “belok kanan”</span></div>
+<div class="action"><strong>Stop</strong><span class="muted">“stop” · “berhenti”</span></div>
+</div></section>
+<section class="panel"><h2>What this demo proves — and what it doesn't</h2>
+<p>This is a browser-based interaction prototype demonstrating multilingual command mapping and a human confirmation step. It does <strong>not</strong> run Whisper, compare automatic language detection with forced-language prompting, or provide benchmark results. Those experiments must be run and reported separately using the project's documented evaluation method.</p></section>
+<footer>AccentBridge · Veritas AI Hackathon project prototype · Software-only simulation</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);let recognition=null,pending=null;
+const commands=[
+{keys:["move forward","go forward","maju","jalan maju"],label:"Move forward",emoji:"⬆️"},
+{keys:["move backward","go backward","mundur"],label:"Move backward",emoji:"⬇️"},
+{keys:["turn left","belok kiri","putar kiri"],label:"Turn left",emoji:"⬅️"},
+{keys:["turn right","belok kanan","putar kanan"],label:"Turn right",emoji:"➡️"},
+{keys:["stop","berhenti","berhenti sekarang"],label:"Stop",emoji:"🛑"}
+];
+function setStatus(s){$("status").textContent=s}
+function match(text){const t=text.toLowerCase().trim();return commands.find(c=>c.keys.some(k=>t.includes(k)))||null}
+function setPending(text){$("heard").textContent=text||"No speech recognised.";pending=match(text);$("interpretation").textContent=pending?"Detected command: "+pending.label:"No supported command detected. Try one of the examples."; $("confirm").disabled=!pending;$("cancel").disabled=!pending}
+$("listen").onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){setStatus("Not supported");$("heard").textContent="Speech recognition is not available in this browser. Try Chrome desktop, or use the command examples as a manual demo.";return}recognition=new SR();recognition.lang=$("language").value;recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onstart=()=>{setStatus("Listening…");$("listen").disabled=true;$("stop").disabled=false};recognition.onresult=e=>setPending(e.results[0][0].transcript);recognition.onerror=e=>{setStatus("Error: "+e.error)};recognition.onend=()=>{setStatus("Ready");$("listen").disabled=false;$("stop").disabled=true};recognition.start()};
+$("stop").onclick=()=>recognition&&recognition.stop();$("clear").onclick=()=>{setPending("");$("heard").textContent="Your recognised speech will appear here.";setStatus("Ready")};
+$("cancel").onclick=()=>{pending=null;$("interpretation").textContent="Command cancelled.";$("confirm").disabled=true;$("cancel").disabled=true};
+$("confirm").onclick=()=>{if(!pending)return;$("robot").textContent=pending.emoji;$("interpretation").textContent="Confirmed simulated action: "+pending.label+". No physical robot is connected.";pending=null;$("confirm").disabled=true;$("cancel").disabled=true};
+</script></body></html>
